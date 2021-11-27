@@ -1,5 +1,5 @@
 # video: the ultimate introduction to pygame
-
+# https://www.youtube.com/watch?v=AY9MnQ4x3zk&list=PL8QF4nftNXtpnW24YpX9PjzSaHMJNGk7a&index=8&t=11341s
 import pygame as pg
 from sys import exit
 from random import randint
