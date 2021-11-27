@@ -2,6 +2,7 @@
 
 import pygame as pg
 from sys import exit
+from random import randint
 
 pg.init()
 screen = pg.display.set_mode((800, 400))
@@ -11,6 +12,14 @@ pg.display.set_caption('Runner')
 pg.font.init()
 
 clock = pg.time.Clock()
+
+run = 0
+
+gravity = 0
+
+global speed
+
+speed = 5
 
 
 background = pg.Surface((800, 400)).convert()
@@ -45,14 +54,37 @@ coin_rect = coin.get_rect(midleft = (1000, 265))
 font = pg.font.SysFont("Sans Serif", 24)
 coin_count = 0
 
+obstacle_list = []
 
-run = 0
+def obstacle_movement(obstacle_list):
+    if obstacle_list:
+        for surface, rectangle in obstacle_list:
+            rectangle.x -= speed
 
-gravity = 0
+            screen.blit(surface, rectangle)
 
-global speed
+        obstacle_list = [obstacle for obstacle in obstacle_list if obstacle[1].x > -100]
 
-speed = 0
+        return obstacle_list
+    else: return []
+
+def check_collision(obstacle_list, char_rect):
+    if obstacle_list:
+        for surface, rectangle in obstacle_list:
+            if char_rect.colliderect(rectangle):
+                # return false to set game active to false = game over
+                # empty obstacle list to have a clean restart of the game
+                # if it's a coin no game over but added coins
+                pass
+
+
+#timer
+
+obstacle_timer = pg.USEREVENT + 1
+pg.time.set_timer(obstacle_timer, 1500)
+
+
+
 
 while True:
     for event in pg.event.get():
@@ -63,6 +95,9 @@ while True:
             if event.key == pg.K_SPACE:
                 if char_rect.bottom == 300: # geen dubbeljump
                     gravity = -20
+        if event.type == obstacle_timer:
+            obstacles = [(vijand, vijand.get_rect(bottomleft = (randint(900, 1100), 300))), (coin, coin.get_rect(midleft = (randint(900, 1100), 265)))]
+            obstacle_list.append(obstacles[randint(0, len(obstacles)-1)])
     
     if run + 1 >= 12:
         run = 0
@@ -77,11 +112,11 @@ while True:
     screen.blit(coin, coin_rect)
     coin_count_surface = font.render(str(coin_count), False, (0, 0, 0))
     screen.blit(coin_count_surface, (750, 50))
-    vijand_rect.left -= 0
-    if vijand_rect.right < 0: vijand_rect.left = 1000
-    
-    coin_rect.left -= 5
-    if coin_rect.right < 0: coin_rect.left = 1000
+    #vijand_rect.left -= 0
+    #if vijand_rect.right < 0: vijand_rect.left = 1000
+    #
+    #coin_rect.left -= 5
+    #if coin_rect.right < 0: coin_rect.left = 1000
 
     if char_rect.colliderect(vijand_rect): 
         vijand_rect.left = 1000
@@ -93,6 +128,11 @@ while True:
     char_rect.y += gravity
     if char_rect.bottom > 300:
         char_rect.bottom = 300
+
+    # OBSTACLE SPAWNING
+    obstacle_list = obstacle_movement(obstacle_list)
+    check_collision(obstacle_list, char_rect)
+
 
     pg.display.update()
     clock.tick(60)
