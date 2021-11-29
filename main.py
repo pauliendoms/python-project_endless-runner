@@ -27,15 +27,15 @@ class Player(pg.sprite.Sprite):
     def blit(self):
         screen.blit(self.images[self.run//4], self.rect)
 
-    def gravitate(self):
+    def gravitate(self, limit):
         self.gravity += 1
         self.rect.y += self.gravity
-        if self.rect.bottom > 300:
-            self.rect.bottom = 300
+        if self.rect.bottom > limit:
+            self.rect.bottom = limit
 
     def jump(self):
         if self.rect.bottom == 300: # geen dubbeljump
-                    self.gravity = -20
+            self.gravity = -17
 
 class Enemy():
     def __init__(self):
@@ -48,27 +48,39 @@ class Enemy():
         screen.blit(self.image, self.rect)
 
 class Coin():
+    count = 0
     def __init__(self):
         super().__init__()
         self.image = pg.Surface((20, 20)).convert()
         self.image.fill("Yellow")
         self.rect = self.image.get_rect(midleft = (randint(900, 1100), 265))
-        self.count = 0
 
     def blit(self):
         screen.blit(self.image, self.rect)
     
-    def collect(self):
-        self.count += 1
-    
+    def collect():
+        Coin.count += 1
+
+    def blit_count():
+        screen.blit(font.render(str(Coin.count), False, (0, 0, 0)), (700, 20))
+
     def buy(self, prize):
         # de prize gaat van de coin_count af
         pass
 
+class Gap():
+    def __init__(self):
+        self.image = pg.Surface((100, 100)).convert()
+        self.image.fill("Lightblue")
+        self.rect = self.image.get_rect(topleft = (randint(900, 1100), 300))
+    
+    def blit(self):
+        screen.blit(self.image, self.rect)
+
 class Obstacle():
     def __init__(self, player):
         self.active_obstacles = []
-        self.obstacles = [Coin, Enemy]
+        self.obstacles = [Coin, Enemy, Gap]
         self.player = player
         self.timer = 0
     
@@ -91,12 +103,43 @@ class Obstacle():
                     # return false to set game active to false = game over
                     # empty obstacle list to have a clean restart of the game
                     # if it's a coin no game over but added coins
-                    pass # I tested with a print statement: collision are detected
+                    # I tested with a print statement: collision are detected
+                    if type(obstacle) == Coin:
+                        Coin.collect()
+                        self.active_obstacles.remove(obstacle)
+                        return True
+                    elif type(obstacle) == Enemy:
+                        return False
+                
+                if type(obstacle) == Gap:
+                    if self.player.rect.right > obstacle.rect.left + 35 and self.player.rect.left < obstacle.rect.right - 35:
+                        if self.player.rect.bottom >= 300:
+                            return False
+        return True
+
+    def terminate(self):
+        if self.active_obstacles:
+            for obstacle in self.active_obstacles:
+                if obstacle.rect.right < 0:
+                    self.active_obstacles.remove(obstacle)
+
     
     def timing(self):
         self.timer = pg.USEREVENT + 1
         pg.time.set_timer(self.timer, 1500)
         
+class Ground():
+    def __init__(self, x):
+        self.image = pg.image.load("assets/Constructionplatform-sprite3.png")
+        self.image = pg.transform.scale(self.image, (300, 300))
+        self.x = x
+        self.rect = self.image.get_rect(bottomleft = (self.x, 412))
+    
+    def blit(self):
+        if self.rect.right < 0:
+            self.rect.left = 895
+        self.rect.left -= speed
+        screen.blit(self.image, self.rect)            
 
 screen = pg.display.set_mode((800, 400))
 pg.display.set_caption('Runner')
@@ -113,22 +156,21 @@ speed = 5
 background = pg.Surface((800, 400)).convert()
 background.fill('Lightblue')
 
-ground = pg.image.load("assets/Constructionplatform-sprite1.png")
-ground = pg.transform.scale(ground, (300, 300))
-ground_rect = ground.get_rect(bottomleft = (0, 412))
-# print(ground_rect.left) -> 0
-# print(ground_rect.top) -> 112
-
+ground = [Ground(0), Ground(300), Ground(600), Ground(900)]
 player = Player()
 obstacle = Obstacle(player)
 
-#font = pg.font.SysFont("Sans Serif", 24)
+font = pg.font.SysFont("Sans Serif", 24)
 
 #timer
 
 obstacle.timing()
 
-while True:
+score = 0
+
+running = True
+
+while running:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             pg.quit()
@@ -141,18 +183,35 @@ while True:
 
     player.move()
     
-    player.gravitate()
+    player.gravitate(300)
     
     screen.blit(background, (0,0))
-    screen.blit(ground, ground_rect)
+    for i in ground:
+        i.blit()
+
     player.blit()
-    #coin_count_surface = font.render(str(coin_count), False, (0, 0, 0))
+    Coin.blit_count()
 
     # OBSTACLE SPAWNING
     obstacle.move()
-    obstacle.collision()
-
-
+    obstacle.terminate()
+    running = obstacle.collision()
+    if not running and type(obstacle.active_obstacles[0]) == Gap:
+        player.gravitate(400)
+        blue = pg.Surface((800 , 100))
+        blue.fill("Lightblue")
+        screen.blit(blue, (0, 200))
+        player.blit()
+        
+    score += 1
+    screen.blit(font.render(str(score), False, (0, 0, 0)), (100, 20))
+    if score % 1000 == 0:
+        speed += 2
     pg.display.update()
     clock.tick(60)
 
+while True:
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            pg.quit()
+            exit()
