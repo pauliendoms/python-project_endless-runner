@@ -17,7 +17,6 @@ class Player(pg.sprite.Sprite):
         self.rect = self.images[0].get_rect(bottomleft = (200, 300))
         self.run = 0
         self.gravity = 0
-        print(type(self.images[0]))
 
     def move(self):
         if self.run + 1 >= 12:
@@ -40,19 +39,40 @@ class Player(pg.sprite.Sprite):
 class Enemy():
     def __init__(self):
         super().__init__()
-        self.image = pg.Surface((20, 50)).convert()
-        self.image.fill("Black")
-        self.rect = (self.image).get_rect(bottomleft = (randint(900, 1100), 300))
-    
+        #self.image = pg.image.load("assets/sawblade-1.png")
+        #self.image = pg.transform.scale(self.image, (50, 50))
+
+        #self.image = pg.Surface((50, 50)).convert()
+        #self.image.fill("Black")
+        #self.rect = (self.image).get_rect(bottomleft = (randint(900, 1100), 300))
+
+        self.images = [pg.transform.scale(pg.image.load('assets/sawblade-1.png').convert_alpha(), (50, 50)), 
+        pg.transform.scale(pg.image.load('assets/sawblade-2.png').convert_alpha(), (50, 50))]
+        self.rect = self.images[0].get_rect(bottomleft = (randint(900, 1100), 300))
+        self.rot = 0
+
+    #def rotate(self):
+    #    if self.rot + 1 >= 6:
+    #        self.rot = 0
+    #    self.rot += 1
+
     def blit(self):
-        screen.blit(self.image, self.rect)
+        if self.rot >= 10:
+            self.rot = 0
+        screen.blit(self.images[self.rot//5], self.rect)
+        self.rot += 1
+    
+    #def blit(self):
+        #screen.blit(self.image, self.rect)
 
 class Coin():
     count = 0
     def __init__(self):
         super().__init__()
-        self.image = pg.Surface((20, 20)).convert()
-        self.image.fill("Yellow")
+        #self.image = pg.Surface((20, 20)).convert()
+        self.image = pg.image.load("assets/coin.png")
+        self.image = pg.transform.scale(self.image, (20, 20))
+        #self.image.fill("Yellow")
         self.rect = self.image.get_rect(midleft = (randint(900, 1100), 265))
 
     def blit(self):
@@ -87,11 +107,10 @@ class Obstacle():
     def new_obstacle(self):
         self.active_obstacles.append(choice(self.obstacles)())
 
-    def move(self):
+    def move(self, speed):
         if self.active_obstacles:
             for obstacle in self.active_obstacles:
                 obstacle.rect.x -= speed
-
                 obstacle.blit()
 
             self.active_obstacles = [obstacle for obstacle in self.active_obstacles if obstacle.rect.x > -100]
@@ -109,7 +128,8 @@ class Obstacle():
                         self.active_obstacles.remove(obstacle)
                         return True
                     elif type(obstacle) == Enemy:
-                        return False
+                        if self.player.rect.right >= obstacle.rect.left + 15 and self.player.rect.left <= obstacle.rect.right - 15 and self.player.rect.bottom >= obstacle.rect.top:
+                            return False
                 
                 if type(obstacle) == Gap:
                     if self.player.rect.right > obstacle.rect.left + 35 and self.player.rect.left < obstacle.rect.right - 35:
@@ -130,14 +150,15 @@ class Obstacle():
         
 class Ground():
     def __init__(self, x):
-        self.image = pg.image.load("assets/Constructionplatform-sprite3.png")
+        #self.image = pg.image.load("assets/Constructionplatform-sprite3.png")
+        self.image = pg.image.load("assets/greenplatform.png")
         self.image = pg.transform.scale(self.image, (300, 300))
         self.x = x
         self.rect = self.image.get_rect(bottomleft = (self.x, 412))
     
-    def blit(self):
+    def blit(self, speed):
         if self.rect.right < 0:
-            self.rect.left = 895
+            self.rect.left = 900 - speed - 20
         self.rect.left -= speed
         screen.blit(self.image, self.rect)            
 
@@ -149,69 +170,116 @@ pg.font.init()
 
 clock = pg.time.Clock()
 
-global speed
-
-speed = 5
+font = pg.font.SysFont("Sans Serif", 24)
 
 background = pg.Surface((800, 400)).convert()
 background.fill('Lightblue')
 
-ground = [Ground(0), Ground(300), Ground(600), Ground(900)]
-player = Player()
-obstacle = Obstacle(player)
+def initializePlay():
+    ground = [Ground(0), Ground(300), Ground(600), Ground(900)]
+    player = Player()
+    obstacle = Obstacle(player)
+    return (ground, player, obstacle);
 
-font = pg.font.SysFont("Sans Serif", 24)
+ground, player, obstacle = initializePlay()
 
-#timer
+play = 0
 
-obstacle.timing()
+def Play():
+    speed = 5
+    obstacle.timing()
 
-score = 0
+    score = 0
+    running = True
 
-running = True
+    while running:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                exit()
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_SPACE:
+                    player.jump()
+            if event.type == obstacle.timer:
+                obstacle.new_obstacle()
 
-while running:
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            pg.quit()
-            exit()
-        if event.type == pg.KEYDOWN:
-            if event.key == pg.K_SPACE:
-                player.jump()
-        if event.type == obstacle.timer:
-            obstacle.new_obstacle()
+        player.move()
 
-    player.move()
-    
-    player.gravitate(300)
-    
-    screen.blit(background, (0,0))
-    for i in ground:
-        i.blit()
+        player.gravitate(300)
 
-    player.blit()
-    Coin.blit_count()
+        screen.blit(background, (0,0))
+        for i in ground:
+            i.blit(speed)
 
-    # OBSTACLE SPAWNING
-    obstacle.move()
-    obstacle.terminate()
-    running = obstacle.collision()
-    if not running and type(obstacle.active_obstacles[0]) == Gap:
-        player.gravitate(400)
-        blue = pg.Surface((800 , 100))
-        blue.fill("Lightblue")
-        screen.blit(blue, (0, 200))
         player.blit()
+        Coin.blit_count()
+
+        # OBSTACLE SPAWNING
+        obstacle.move(speed)
+        obstacle.terminate()
+        running = obstacle.collision()
+        global play
+        play = 0
+        if not running and type(obstacle.active_obstacles[0]) == Gap:
+            player.gravitate(400)
+            blue = pg.Surface((800 , 100))
+            blue.fill("Lightblue")
+            screen.blit(blue, (0, 200))
+            player.blit()
         
-    score += 1
-    screen.blit(font.render(str(score), False, (0, 0, 0)), (100, 20))
-    if score % 1000 == 0:
-        speed += 2
-    pg.display.update()
-    clock.tick(60)
+        if not running:
+            obstacle.active_obstacles = []
+
+        score += 1
+        screen.blit(font.render(str(score), False, (0, 0, 0)), (100, 20))
+        
+        #if score % 1000 == 0:
+        #    speed += 2
+        pg.display.update()
+        clock.tick(60)
+
+def startMenu():
+    while True:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                exit()
+            if event.type == pg.KEYDOWN:
+                    print("here we are now")
+                    if event.key == pg.K_SPACE:
+                        print("entertain us")
+                        global play
+                        play = 1
+                        return
+        screen.blit(background, (0, 0))
+        screen.blit(font.render("menu", False, (0, 0, 0)),(380, 100))
+        screen.blit(font.render("[Press space to play]", False, (0, 0, 0)),(330, 150))
+        pg.display.update()
+
+def shop():
+    while True:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                exit()
+            if event.type == pg.KEYDOWN:
+                pass
+        screen.blit(background, (0, 0))
+        screen.blit(font.render("menu", False, (0, 0, 0)),(380, 100))
+        screen.blit(font.render("[Press space to play]", False, (0, 0, 0)),(330, 150))
+        pg.display.update()
 
 while True:
     for event in pg.event.get():
+        print(event.type)
         if event.type == pg.QUIT:
             pg.quit()
             exit()
+    print(play)
+    if play:
+        initializePlay()
+        Play()
+    else:
+        startMenu();
+    
+        
