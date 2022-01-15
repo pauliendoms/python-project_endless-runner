@@ -9,7 +9,6 @@ pg.init()
 
 class Player(pg.sprite.Sprite):
     def __init__(self):
-        super().__init__()
         self.images = [pg.transform.scale(pg.image.load('assets/character_sprite1.png').convert_alpha(), (70, 70)), 
         pg.transform.scale(pg.image.load('assets/character_sprite2.png').convert_alpha(), (70, 70)), 
         pg.transform.scale(pg.image.load('assets/character_sprite3.png').convert_alpha(), (70, 70)), 
@@ -37,42 +36,40 @@ class Player(pg.sprite.Sprite):
             self.gravity = -17
 
 class Enemy():
+    global upgrades
+
     def __init__(self):
-        super().__init__()
-        #self.image = pg.image.load("assets/sawblade-1.png")
-        #self.image = pg.transform.scale(self.image, (50, 50))
 
-        #self.image = pg.Surface((50, 50)).convert()
-        #self.image.fill("Black")
-        #self.rect = (self.image).get_rect(bottomleft = (randint(900, 1100), 300))
+        if not upgrades[1].bought:
+            self.images = [pg.Surface((50, 50)).convert()]
+            self.images[0].fill("Black")
+        else:
+            self.images = [pg.transform.scale(pg.image.load('assets/sawblade-1.png').convert_alpha(), (50, 50)), 
+            pg.transform.scale(pg.image.load('assets/sawblade-2.png').convert_alpha(), (50, 50))]
 
-        self.images = [pg.transform.scale(pg.image.load('assets/sawblade-1.png').convert_alpha(), (50, 50)), 
-        pg.transform.scale(pg.image.load('assets/sawblade-2.png').convert_alpha(), (50, 50))]
         self.rect = self.images[0].get_rect(bottomleft = (randint(900, 1100), 300))
         self.rot = 0
 
-    #def rotate(self):
-    #    if self.rot + 1 >= 6:
-    #        self.rot = 0
-    #    self.rot += 1
-
     def blit(self):
-        if self.rot >= 10:
-            self.rot = 0
-        screen.blit(self.images[self.rot//5], self.rect)
-        self.rot += 1
-    
-    #def blit(self):
-        #screen.blit(self.image, self.rect)
+        if upgrades[1].bought:
+            if self.rot >= 10:
+                self.rot = 0
+            screen.blit(self.images[self.rot//5], self.rect)
+            self.rot += 1
+        else:
+            screen.blit(self.images[0], self.rect)
 
 class Coin():
     count = 0
+    global upgrades
     def __init__(self):
-        super().__init__()
-        #self.image = pg.Surface((20, 20)).convert()
-        self.image = pg.image.load("assets/coin.png")
-        self.image = pg.transform.scale(self.image, (20, 20))
-        #self.image.fill("Yellow")
+        if not upgrades[2].bought:
+            self.image = pg.Surface((20, 20)).convert()
+            self.image.fill("Yellow")
+        else:
+            self.image = pg.image.load("assets/coin.png")
+            self.image = pg.transform.scale(self.image, (20, 20))
+        
         self.rect = self.image.get_rect(midleft = (randint(900, 1100), 265))
 
     def blit(self):
@@ -82,11 +79,7 @@ class Coin():
         Coin.count += 1
 
     def blit_count():
-        screen.blit(font.render(str(Coin.count), False, (0, 0, 0)), (700, 20))
-
-    def buy(self, prize):
-        # de prize gaat van de coin_count af
-        pass
+        screen.blit(font.render("$" + str(Coin.count), False, (0, 0, 0)), (700, 20))
 
 class Gap():
     def __init__(self):
@@ -149,10 +142,16 @@ class Obstacle():
         pg.time.set_timer(self.timer, 1500)
         
 class Ground():
+    global upgrades
     def __init__(self, x):
-        #self.image = pg.image.load("assets/Constructionplatform-sprite3.png")
-        self.image = pg.image.load("assets/greenplatform.png")
-        self.image = pg.transform.scale(self.image, (300, 300))
+        if upgrades[0].bought:
+            self.image = pg.image.load("assets/greenplatform.png")
+            self.image = pg.transform.scale(self.image, (300, 300))
+        else:
+            self.image = pg.image.load("assets/Constructionplatform-sprite3.png")
+            self.image = pg.transform.scale(self.image, (300, 300))
+        
+            
         self.x = x
         self.rect = self.image.get_rect(bottomleft = (self.x, 412))
     
@@ -160,7 +159,37 @@ class Ground():
         if self.rect.right < 0:
             self.rect.left = 900 - speed - 20
         self.rect.left -= speed
-        screen.blit(self.image, self.rect)            
+        screen.blit(self.image, self.rect)
+
+class Upgrade():
+    def __init__(self, images, name, price, bought, number):
+        self.images = []
+        for i in images:
+            self.images.append(pg.image.load(f"assets/{i}"))
+        self.name = name
+        self.price = price
+        self.bought = bought
+        self.number = number
+    
+    def buy(self):
+        Coin.count -= self.price
+        self.bought = 1
+    
+    def blit(self, x, y):
+        screen.blit(self.images[0], (x, y))
+        screen.blit(font.render(self.name, False, (0, 0, 0)), (x, y+50))
+        if not self.bought:
+            screen.blit(font.render("$" + str(self.price), False, (0, 0, 0)), (x, y+70))
+            screen.blit(font.render(str(self.number), False, (0, 0, 0)), (x, y+90))
+        else:
+            screen.blit(font.render("Already bought", False, (0, 0, 0)), (x, y+70))
+    
+    def buyable(self):
+        if Coin.count >= self.price:
+            return True
+        else:
+            return False
+        
 
 screen = pg.display.set_mode((800, 400))
 pg.display.set_caption('Runner')
@@ -175,11 +204,18 @@ font = pg.font.SysFont("Sans Serif", 24)
 background = pg.Surface((800, 400)).convert()
 background.fill('Lightblue')
 
+# initialize play
+upgrades = [
+    Upgrade(["greenplatform.png"], "Platform", 0, 10, 1),
+    Upgrade(["sawblade-1.png", "sawblade-2.png"], "Enemy", 0, 10, 2),
+    Upgrade(["coin.png"], "Coin", 10, 0, 3)
+    ]
+
 def initializePlay():
-    ground = [Ground(0), Ground(300), Ground(600), Ground(900)]
     player = Player()
     obstacle = Obstacle(player)
-    return (ground, player, obstacle);
+    ground = [Ground(0), Ground(300), Ground(600), Ground(900)]
+    return (ground, player, obstacle)
 
 ground, player, obstacle = initializePlay()
 
@@ -245,39 +281,52 @@ def startMenu():
                 pg.quit()
                 exit()
             if event.type == pg.KEYDOWN:
-                    print("here we are now")
                     if event.key == pg.K_SPACE:
-                        print("entertain us")
                         global play
                         play = 1
                         return
+                    if event.key == pg.K_s:
+                        shop()
         screen.blit(background, (0, 0))
         screen.blit(font.render("menu", False, (0, 0, 0)),(380, 100))
         screen.blit(font.render("[Press space to play]", False, (0, 0, 0)),(330, 150))
+        screen.blit(font.render("[Press S to go to the shop]", False, (0, 0, 0)),(320, 180))
         pg.display.update()
 
 def shop():
+    global ground
     while True:
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
                 exit()
             if event.type == pg.KEYDOWN:
-                pass
+                if event.key == pg.K_m:
+                    return
+                for u in upgrades:
+                    if pg.key.name(event.key) == u.number or pg.key.name(event.key) == "[" + str(u.number) + "]":
+                        if u.buyable():
+                            u.buy()
+                    
         screen.blit(background, (0, 0))
-        screen.blit(font.render("menu", False, (0, 0, 0)),(380, 100))
-        screen.blit(font.render("[Press space to play]", False, (0, 0, 0)),(330, 150))
+        screen.blit(font.render("shop", False, (0, 0, 0)),(380, 50))
+        Coin.blit_count()
+        x = 100
+        for upgrade in upgrades:
+            upgrade.blit(x, 150)
+            x += 150
+
+        screen.blit(font.render("[Press M to get back to the menu]", False, (0, 0, 0)),(320, 350))
         pg.display.update()
 
 while True:
     for event in pg.event.get():
-        print(event.type)
         if event.type == pg.QUIT:
             pg.quit()
             exit()
-    print(play)
+
     if play:
-        initializePlay()
+        ground, player, obstacle = initializePlay()
         Play()
     else:
         startMenu();
