@@ -206,8 +206,8 @@ background.fill('Lightblue')
 
 # initialize play
 upgrades = [
-    Upgrade(["greenplatform.png"], "Platform", 0, 10, 1),
-    Upgrade(["sawblade-1.png", "sawblade-2.png"], "Enemy", 0, 10, 2),
+    Upgrade(["greenplatform.png"], "Platform", 10, 0, 1),
+    Upgrade(["sawblade-1.png", "sawblade-2.png"], "Enemy", 10, 0, 2),
     Upgrade(["coin.png"], "Coin", 10, 0, 3)
     ]
 
