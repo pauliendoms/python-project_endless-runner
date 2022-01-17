@@ -37,6 +37,7 @@ class Player(pg.sprite.Sprite):
 
 class Enemy():
     global upgrades
+    global max_x
 
     def __init__(self):
 
@@ -47,7 +48,7 @@ class Enemy():
             self.images = [pg.transform.scale(pg.image.load('assets/sawblade-1.png').convert_alpha(), (50, 50)), 
             pg.transform.scale(pg.image.load('assets/sawblade-2.png').convert_alpha(), (50, 50))]
 
-        self.rect = self.images[0].get_rect(bottomleft = (randint(900, 1100), 300))
+        self.rect = self.images[0].get_rect(bottomleft = (randint(900, max_x), 300))
         self.rot = 0
 
     def blit(self):
@@ -62,6 +63,8 @@ class Enemy():
 class Coin():
     count = 0
     global upgrades
+    global max_x
+
     def __init__(self):
         if not upgrades[2].bought:
             self.image = pg.Surface((20, 20)).convert()
@@ -70,7 +73,7 @@ class Coin():
             self.image = pg.image.load("assets/coin.png")
             self.image = pg.transform.scale(self.image, (20, 20))
         
-        self.rect = self.image.get_rect(midleft = (randint(900, 1100), 265))
+        self.rect = self.image.get_rect(midleft = (randint(900, max_x), 265))
 
     def blit(self):
         screen.blit(self.image, self.rect)
@@ -82,10 +85,12 @@ class Coin():
         screen.blit(font.render("$" + str(Coin.count), False, (0, 0, 0)), (700, 20))
 
 class Gap():
+    global max_x
+
     def __init__(self):
         self.image = pg.Surface((100, 100)).convert()
         self.image.fill("Lightblue")
-        self.rect = self.image.get_rect(topleft = (randint(900, 1100), 300))
+        self.rect = self.image.get_rect(topleft = (randint(900, max_x), 300))
     
     def blit(self):
         screen.blit(self.image, self.rect)
@@ -96,6 +101,7 @@ class Obstacle():
         self.obstacles = [Coin, Enemy, Gap]
         self.player = player
         self.timer = 0
+        self.generation_speed = 1500
     
     def new_obstacle(self):
         self.active_obstacles.append(choice(self.obstacles)())
@@ -115,7 +121,6 @@ class Obstacle():
                     # return false to set game active to false = game over
                     # empty obstacle list to have a clean restart of the game
                     # if it's a coin no game over but added coins
-                    # I tested with a print statement: collision are detected
                     if type(obstacle) == Coin:
                         Coin.collect()
                         self.active_obstacles.remove(obstacle)
@@ -139,7 +144,7 @@ class Obstacle():
     
     def timing(self):
         self.timer = pg.USEREVENT + 1
-        pg.time.set_timer(self.timer, 1500)
+        pg.time.set_timer(self.timer, self.generation_speed)
         
 class Ground():
     global upgrades
@@ -192,8 +197,8 @@ class Upgrade():
         
 
 screen = pg.display.set_mode((800, 400))
-pg.display.set_caption('Runner')
-#pg.display.set_icon ?
+pg.display.set_caption('Work In Progress')
+pg.display.set_icon(pg.image.load("assets/character_sprite1.png"))
 
 pg.font.init()
 
@@ -204,10 +209,9 @@ font = pg.font.SysFont("Sans Serif", 24)
 background = pg.Surface((800, 400)).convert()
 background.fill('Lightblue')
 
-# initialize play
 upgrades = [
-    Upgrade(["greenplatform.png"], "Platform", 10, 0, 1),
-    Upgrade(["sawblade-1.png", "sawblade-2.png"], "Enemy", 10, 0, 2),
+    Upgrade(["greenplatform.png"], "Platform", 100, 0, 1),
+    Upgrade(["sawblade-1.png", "sawblade-2.png"], "Enemy", 50, 0, 2),
     Upgrade(["coin.png"], "Coin", 10, 0, 3)
     ]
 
@@ -215,13 +219,20 @@ def initializePlay():
     player = Player()
     obstacle = Obstacle(player)
     ground = [Ground(0), Ground(300), Ground(600), Ground(900)]
-    return (ground, player, obstacle)
+    difficulty = 60
+    max_x = 1100
+    return (ground, player, obstacle, difficulty, max_x)
 
-ground, player, obstacle = initializePlay()
+ground, player, obstacle, difficulty, max_x = initializePlay()
 
 play = 0
+highscore = 0
+
 
 def Play():
+    global highscore
+    global difficulty
+    global max_x
     speed = 5
     obstacle.timing()
 
@@ -265,14 +276,29 @@ def Play():
         
         if not running:
             obstacle.active_obstacles = []
+            if score > highscore:
+                highscore = score
 
+            bought_upgrades = 0
+            for u in upgrades:
+                if u.bought:
+                    bought_upgrades += 1
+            
+            if bought_upgrades == len(upgrades):
+                finish()
+            
         score += 1
         screen.blit(font.render(str(score), False, (0, 0, 0)), (100, 20))
+        screen.blit(font.render("Highscore: " + str(highscore), False, (0, 0, 0)), (200, 20))
         
-        #if score % 1000 == 0:
-        #    speed += 2
+        if score % 500 == 0:
+            difficulty += 5
+            obstacle.generation_speed -= 200
+            max_x -= 10
+        
+        
         pg.display.update()
-        clock.tick(60)
+        clock.tick(difficulty)
 
 def startMenu():
     while True:
@@ -319,6 +345,20 @@ def shop():
         screen.blit(font.render("[Press M to get back to the menu]", False, (0, 0, 0)),(320, 350))
         pg.display.update()
 
+def finish():
+    while True:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                exit()
+            
+        screen.blit(background, (0, 0))
+        screen.blit(font.render("Congratulations!", False, (0, 0, 0)),(330, 100))
+        screen.blit(font.render("You fixed the game!", False, (0, 0, 0)),(330, 150))
+        screen.blit(font.render(f"Your final highscore is {highscore}", False, (0, 0, 0)),(320, 180))
+        screen.blit(font.render("See if you can get a higher total highscore the next time you play!", False, (0, 0, 0)),(180, 210))
+        pg.display.update()
+
 while True:
     for event in pg.event.get():
         if event.type == pg.QUIT:
@@ -326,7 +366,7 @@ while True:
             exit()
 
     if play:
-        ground, player, obstacle = initializePlay()
+        ground, player, obstacle, difficulty, max_x = initializePlay()
         Play()
     else:
         startMenu();
