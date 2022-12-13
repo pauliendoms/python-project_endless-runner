@@ -330,7 +330,7 @@ def shop():
                 if event.key == pg.K_m:
                     return
                 for u in upgrades:
-                    if pg.key.name(event.key) == u.number or pg.key.name(event.key) == "[" + str(u.number) + "]":
+                    if pg.key.name(event.key) == u.number or pg.key.name(event.key) == "[" + str(u.number) + "]" or pg.key.key_code(pg.key.name(event.key)) == pg.key.key_code(str(u.number)):
                         if u.buyable():
                             u.buy()
                     
